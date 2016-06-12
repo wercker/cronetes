@@ -1,0 +1,52 @@
+box: golang:1.6
+build:
+  base-path: /go/src/github.com/wercker/cronetes
+  steps:
+    - script:
+        name: install govendor
+        code: go get -u github.com/kardianos/govendor
+
+    - script:
+        name: go vet
+        code: govendor vet +local
+
+    - script:
+        name: install depdendencies
+        code: govendor sync
+
+    - script:
+        name: GetLongBit hack
+        code: cp -v hack/fix_wercker.go vendor/github.com/opencontainers/runc/libcontainer/system/fix_wercker.go
+
+    - script:
+        name: go build
+        code: |
+          CGO_ENABLED=0 \
+          go build \
+          -v \
+          -ldflags="-s -X github.com/wercker/cronetes.GitCommit=$WERCKER_GIT_COMMIT -X github.com/wercker/cronetes.PatchVersion=$(( ($(date +%s) - $(date --date=20150101 +%s) )/(60*60*24) )) -X github.com/wercker/cronetes.Compiled=$(date +%s)" \
+          -installsuffix cgo \
+          -o $WERCKER_OUTPUT_DIR/cronetes
+
+push-quay:
+  box:
+    id: alpine
+    cmd: /bin/sh
+  steps:
+    - script:
+        name: install apk packages
+        code: |
+          echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
+          apk update && apk add ca-certificates
+
+    - script:
+        name: prepare
+        code: mv ./cronetes /cronetes
+
+    - internal/docker-push:
+        repository: quay.io/wercker/cronetes
+        registry: https://quay.io
+        username: $DOCKER_USERNAME
+        password: $DOCKER_PASSWORD
+        tag: $WERCKER_GIT_BRANCH-$WERCKER_GIT_COMMIT,latest
+        entrypoint: /cronetes

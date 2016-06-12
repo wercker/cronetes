@@ -1,0 +1,15 @@
+- schedule: 0 * * * * *
+  job:
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: sendemails
+    spec:
+      template:
+        metadata:
+          name: sendemails
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: job
+            image: debian
