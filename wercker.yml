@@ -11,7 +11,7 @@ build:
         code: govendor vet +local
 
     - script:
-        name: install depdendencies
+        name: install dependencies
         code: govendor sync
 
     - script:
